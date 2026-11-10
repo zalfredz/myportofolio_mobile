@@ -1,30 +1,38 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:myportofolio_mobile/main.dart';
+import 'package:myportofolio_mobile/menu.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
+  testWidgets('InfoCard menampilkan NPM, nama, dan kelas', (tester) async {
     await tester.pumpWidget(const MyApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('2506656412'), findsOneWidget);
+    expect(find.text('Alfredo Harsono'), findsOneWidget);
+    expect(find.text('PBP C'), findsOneWidget);
   });
+
+  testWidgets('setiap ItemCard punya warna latar berbeda', (tester) async {
+    await tester.pumpWidget(const MyApp());
+
+    final colors = tester
+        .widgetList<ItemCard>(find.byType(ItemCard))
+        .map((card) => card.item.color)
+        .toSet();
+    expect(colors.length, MyHomePage.items.length);
+  });
+
+  for (final item in MyHomePage.items) {
+    testWidgets('menekan ${item.name} memunculkan SnackBar', (tester) async {
+      await tester.pumpWidget(const MyApp());
+
+      await tester.tap(find.text(item.name));
+      await tester.pump();
+
+      expect(
+        find.text('Kamu telah menekan tombol ${item.name}!'),
+        findsOneWidget,
+      );
+    });
+  }
 }
