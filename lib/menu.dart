@@ -4,7 +4,7 @@ class MyHomePage extends StatelessWidget {
   const MyHomePage({super.key});
 
   static const String npm = '2506656412';
-  static const String nama = 'Alfredo';
+  static const String nama = 'Alfredo Harsono';
   static const String kelas = 'PBP C';
   static const List<ItemHomepage> items = [
     ItemHomepage('Lihat Proyek', Icons.folder),
