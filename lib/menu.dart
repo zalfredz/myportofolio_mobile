@@ -47,6 +47,9 @@ class MyHomePage extends StatelessWidget {
               crossAxisSpacing: 10,
               mainAxisSpacing: 10,
               crossAxisCount: 3,
+              // Kartu sedikit lebih tinggi dari lebarnya agar ikon dan label yang
+              // terpecah beberapa baris tidak overflow di layar sempit (320-360).
+              childAspectRatio: 0.8,
               shrinkWrap: true,
               children: items.map((item) => ItemCard(item)).toList(),
             ),
