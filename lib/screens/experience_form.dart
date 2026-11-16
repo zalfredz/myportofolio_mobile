@@ -22,6 +22,10 @@ class _ExperienceFormPageState extends State<ExperienceFormPage> {
   DateTime? _startDate;
   DateTime? _endDate;
 
+  /// Pengalaman yang masih berlangsung tidak punya tanggal selesai,
+  /// sama seperti `end_date` kosong (`is_ongoing`) di model Django.
+  bool _isOngoing = false;
+
   // Sama dengan pilihan yang ditampilkan ExperienceForm di Django.
   static const List<String> _categories = [
     'Full-Time',
@@ -74,6 +78,17 @@ class _ExperienceFormPageState extends State<ExperienceFormPage> {
       _thumbnail = '';
       _startDate = null;
       _endDate = null;
+      _isOngoing = false;
+    });
+  }
+
+  void _setOngoing(bool value) {
+    setState(() {
+      _isOngoing = value;
+      if (value) {
+        _endDate = null;
+        _endDateController.clear();
+      }
     });
   }
 
@@ -98,7 +113,11 @@ class _ExperienceFormPageState extends State<ExperienceFormPage> {
   }
 
   String? _validateEndDate(String? _) {
-    if (_endDate != null &&
+    if (_isOngoing) return null;
+    if (_endDate == null) {
+      return 'Pilih tanggal selesai atau aktifkan "Masih berlangsung"!';
+    }
+    if (_startDate != null &&
         _startDate != null &&
         _endDate!.isBefore(_startDate!)) {
       return 'Tanggal selesai tidak boleh sebelum tanggal mulai!';
@@ -137,7 +156,7 @@ class _ExperienceFormPageState extends State<ExperienceFormPage> {
                 ),
                 Text('Tanggal Mulai: ${_formatDate(_startDate!)}'),
                 Text(
-                  'Tanggal Selesai: ${_endDate == null ? '-' : _formatDate(_endDate!)}',
+                  'Tanggal Selesai: ${_isOngoing ? 'Sekarang' : _formatDate(_endDate!)}',
                 ),
               ],
             ),
@@ -258,13 +277,22 @@ class _ExperienceFormPageState extends State<ExperienceFormPage> {
                 child: TextFormField(
                   controller: _endDateController,
                   readOnly: true,
+                  enabled: !_isOngoing,
                   decoration: _decoration(
-                    'Tanggal Selesai (opsional)',
+                    'Tanggal Selesai',
+                    hint: _isOngoing ? 'Sekarang' : null,
                     suffixIcon: const Icon(Icons.calendar_today),
                   ),
                   onTap: () => _pickDate(isStart: false),
                   validator: _validateEndDate,
                 ),
+              ),
+              // === Masih Berlangsung ===
+              SwitchListTile(
+                title: const Text('Masih berlangsung'),
+                subtitle: const Text('Saya masih menjalani pengalaman ini'),
+                value: _isOngoing,
+                onChanged: _setOngoing,
               ),
               // === Tombol Simpan ===
               Align(

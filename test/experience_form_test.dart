@@ -95,6 +95,10 @@ void main() {
       );
       expect(find.text('Kategori wajib dipilih!'), findsOneWidget);
       expect(find.text('Tanggal mulai wajib dipilih!'), findsOneWidget);
+      expect(
+        find.text('Pilih tanggal selesai atau aktifkan "Masih berlangsung"!'),
+        findsOneWidget,
+      );
       expect(find.byType(AlertDialog), findsNothing);
     });
 
@@ -112,7 +116,7 @@ void main() {
     ) async {
       await pumpForm(tester);
 
-      await _pickDay(tester, 'Tanggal Selesai (opsional)', '10');
+      await _pickDay(tester, 'Tanggal Selesai', '10');
       await _pickDay(tester, 'Tanggal Mulai', '20');
       await _tapVisible(tester, find.text('Simpan'));
 
@@ -122,22 +126,28 @@ void main() {
       );
     });
 
+    /// Mengisi semua field wajib kecuali tanggal selesai.
+    Future<void> fillRequired(WidgetTester tester) async {
+      await tester.enterText(_field('Judul Pengalaman'), '  Asisten Dosen  ');
+      await tester.enterText(_field('Deskripsi Pengalaman'), 'Mengajar lab');
+      await _tapVisible(tester, find.text('Pilih kategori'));
+      await tester.tap(find.text('Internship').last);
+      await tester.pumpAndSettle();
+      await _pickDay(tester, 'Tanggal Mulai', '10');
+    }
+
     testWidgets('input valid menampilkan ringkasan, OK mengosongkan form', (
       tester,
     ) async {
       await pumpForm(tester);
       final now = DateTime.now();
 
-      await tester.enterText(_field('Judul Pengalaman'), '  Asisten Dosen  ');
-      await tester.enterText(_field('Deskripsi Pengalaman'), 'Mengajar lab');
-      await _tapVisible(tester, find.text('Pilih kategori'));
-      await tester.tap(find.text('Internship').last);
-      await tester.pumpAndSettle();
+      await fillRequired(tester);
       await tester.enterText(
         _field('URL Gambar (opsional)'),
         'https://example.com/a.jpg',
       );
-      await _pickDay(tester, 'Tanggal Mulai', '10');
+      await _pickDay(tester, 'Tanggal Selesai', '20');
       await _tapVisible(tester, find.text('Simpan'));
 
       expect(find.text('Pengalaman berhasil disimpan!'), findsOneWidget);
@@ -152,7 +162,10 @@ void main() {
         find.text('Tanggal Mulai: 10/${now.month}/${now.year}'),
         findsOneWidget,
       );
-      expect(find.text('Tanggal Selesai: -'), findsOneWidget);
+      expect(
+        find.text('Tanggal Selesai: 20/${now.month}/${now.year}'),
+        findsOneWidget,
+      );
 
       await tester.tap(find.text('OK'));
       await tester.pumpAndSettle();
@@ -162,6 +175,31 @@ void main() {
       await _tapVisible(tester, find.text('Simpan'));
       expect(find.text('Judul pengalaman tidak boleh kosong!'), findsOneWidget);
       expect(find.byType(AlertDialog), findsNothing);
+    });
+
+    testWidgets('Masih berlangsung mengosongkan tanggal selesai', (
+      tester,
+    ) async {
+      await pumpForm(tester);
+
+      await fillRequired(tester);
+      await _pickDay(tester, 'Tanggal Selesai', '20');
+      await _tapVisible(tester, find.text('Masih berlangsung'));
+
+      final endField = tester.widget<TextFormField>(_field('Tanggal Selesai'));
+      expect(endField.enabled, isFalse);
+      expect(endField.controller!.text, isEmpty);
+
+      await _tapVisible(tester, find.text('Simpan'));
+      expect(find.text('Tanggal Selesai: Sekarang'), findsOneWidget);
+
+      // Setelah OK, switch kembali mati.
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+        isFalse,
+      );
     });
   });
 }
