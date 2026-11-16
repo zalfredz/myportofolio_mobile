@@ -1,4 +1,6 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:myportofolio_mobile/screens/experience_form.dart';
+import 'package:myportofolio_mobile/screens/project_form.dart';
 import 'package:myportofolio_mobile/widgets/left_drawer.dart';
 import 'package:myportofolio_mobile/widgets/project_card.dart';
 
@@ -11,7 +13,18 @@ class MyHomePage extends StatelessWidget {
   // Shade 700/800 dipilih agar teks putih di atasnya tetap kontras (WCAG AA).
   static final List<ItemHomepage> items = [
     ItemHomepage('Lihat Proyek', Icons.folder, Colors.blue.shade700),
-    ItemHomepage('Tambah Proyek', Icons.add_circle, Colors.green.shade800),
+    ItemHomepage(
+      'Tambah Proyek',
+      Icons.add_circle,
+      Colors.green.shade800,
+      page: const ProjectFormPage(),
+    ),
+    ItemHomepage(
+      'Tambah Pengalaman',
+      Icons.work,
+      Colors.purple.shade700,
+      page: const ExperienceFormPage(),
+    ),
     ItemHomepage('Logout', Icons.logout, Colors.red.shade700),
   ];
 
@@ -50,10 +63,10 @@ class MyHomePage extends StatelessWidget {
               padding: const EdgeInsets.all(20),
               crossAxisSpacing: 10,
               mainAxisSpacing: 10,
-              crossAxisCount: 3,
-              // Kartu sedikit lebih tinggi dari lebarnya agar ikon dan label yang
-              // terpecah beberapa baris tidak overflow di layar sempit (320-360).
-              childAspectRatio: 0.8,
+              // 2 kolom: 4 kartu tersusun 2x2 dan label panjang seperti
+              // "Tambah Pengalaman" tetap muat di layar sempit (320-360).
+              crossAxisCount: 2,
+              childAspectRatio: 1.2,
               shrinkWrap: true,
               children: items.map((item) => ItemCard(item)).toList(),
             ),
@@ -89,9 +102,13 @@ class InfoCard extends StatelessWidget {
 }
 
 class ItemHomepage {
-  const ItemHomepage(this.name, this.icon, this.color);
+  const ItemHomepage(this.name, this.icon, this.color, {this.page});
 
   final String name;
   final IconData icon;
   final Color color;
+
+  /// Halaman yang dibuka dengan `Navigator.push()` saat kartu ditekan.
+  /// `null` berarti kartu hanya menampilkan SnackBar.
+  final Widget? page;
 }

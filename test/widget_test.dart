@@ -27,6 +27,7 @@ void main() {
     testWidgets('menekan ${item.name} memunculkan SnackBar', (tester) async {
       await tester.pumpWidget(const MyApp());
 
+      await tester.ensureVisible(find.text(item.name));
       await tester.tap(find.text(item.name));
       await tester.pump();
 

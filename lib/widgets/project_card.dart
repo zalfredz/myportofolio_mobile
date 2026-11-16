@@ -1,6 +1,5 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:myportofolio_mobile/screens/menu.dart';
-import 'package:myportofolio_mobile/screens/project_form.dart';
 
 class ItemCard extends StatelessWidget {
   const ItemCard(this.item, {super.key});
@@ -42,10 +41,11 @@ class ItemCard extends StatelessWidget {
               ),
             );
 
-          if (item.name == 'Tambah Proyek') {
+          final page = item.page;
+          if (page != null) {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const ProjectFormPage()),
+              MaterialPageRoute(builder: (context) => page),
             );
           }
         },
