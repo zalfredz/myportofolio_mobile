@@ -4,7 +4,20 @@ import 'package:myportofolio_mobile/screens/menu.dart';
 import 'package:myportofolio_mobile/screens/project_form.dart';
 
 class LeftDrawer extends StatelessWidget {
-  const LeftDrawer({super.key});
+  const LeftDrawer({super.key, this.onLeave});
+
+  /// Dipanggil sebelum pindah halaman. Jika hasilnya `false`, navigasi
+  /// dibatalkan (dipakai formulir untuk konfirmasi isian yang belum disimpan).
+  final Future<bool> Function()? onLeave;
+
+  Future<void> _navigate(BuildContext context, Widget page) async {
+    if (onLeave != null && !await onLeave!()) return;
+    if (!context.mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => page),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,36 +48,17 @@ class LeftDrawer extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.home_outlined),
             title: const Text('Home'),
-            onTap: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const MyHomePage()),
-              );
-            },
+            onTap: () => _navigate(context, const MyHomePage()),
           ),
           ListTile(
             leading: const Icon(Icons.add_circle_outline),
             title: const Text('Add Project'),
-            onTap: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ProjectFormPage(),
-                ),
-              );
-            },
+            onTap: () => _navigate(context, const ProjectFormPage()),
           ),
           ListTile(
             leading: const Icon(Icons.work_outline),
             title: const Text('Add Experience'),
-            onTap: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ExperienceFormPage(),
-                ),
-              );
-            },
+            onTap: () => _navigate(context, const ExperienceFormPage()),
           ),
         ],
       ),

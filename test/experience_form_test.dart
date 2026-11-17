@@ -78,6 +78,52 @@ void main() {
     });
   });
 
+  group('konfirmasi meninggalkan formulir', () {
+    Future<void> openFilledForm(WidgetTester tester) async {
+      await tester.pumpWidget(const MyApp());
+      await _tapVisible(tester, find.text('Tambah Pengalaman'));
+      await tester.enterText(_field('Judul Pengalaman'), 'Asisten Dosen');
+      await tester.pump();
+    }
+
+    testWidgets('Back dengan isian: Batal tetap di form, Buang kembali', (
+      tester,
+    ) async {
+      await openFilledForm(tester);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('Buang perubahan?'), findsOneWidget);
+
+      await tester.tap(find.text('Batal'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ExperienceFormPage), findsOneWidget);
+      expect(find.text('Asisten Dosen'), findsOneWidget);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Buang'));
+      await tester.pumpAndSettle();
+      expect(find.text(_homeText), findsOneWidget);
+    });
+
+    testWidgets('Home di drawer dengan isian meminta konfirmasi', (
+      tester,
+    ) async {
+      await openFilledForm(tester);
+
+      await _openDrawer(tester);
+      await tester.tap(find.text('Home'));
+      await tester.pumpAndSettle();
+      expect(find.text('Buang perubahan?'), findsOneWidget);
+
+      await tester.tap(find.text('Buang'));
+      await tester.pumpAndSettle();
+      expect(find.text(_homeText), findsOneWidget);
+      expect(find.byType(ExperienceFormPage), findsNothing);
+    });
+  });
+
   group('validasi formulir pengalaman', () {
     Future<void> pumpForm(WidgetTester tester) =>
         tester.pumpWidget(const MaterialApp(home: ExperienceFormPage()));
