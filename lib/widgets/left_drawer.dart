@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:myportofolio_mobile/screens/experience_form.dart';
+import 'package:myportofolio_mobile/screens/experience_list_screen.dart';
 import 'package:myportofolio_mobile/screens/menu.dart';
 import 'package:myportofolio_mobile/screens/login_screen.dart';
 import 'package:myportofolio_mobile/screens/project_form.dart';
@@ -69,6 +70,11 @@ class LeftDrawer extends StatelessWidget {
               const ProjectFormPage(),
               requiresLogin: true,
             ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.list_alt),
+            title: const Text('Experiences'),
+            onTap: () => _navigate(context, const ExperienceListScreen()),
           ),
           ListTile(
             leading: const Icon(Icons.work_outline),

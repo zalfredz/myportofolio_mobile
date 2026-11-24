@@ -1,5 +1,5 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:myportofolio_mobile/screens/experience_form.dart';
+import 'package:myportofolio_mobile/screens/experience_list_screen.dart';
 import 'package:myportofolio_mobile/screens/project_form.dart';
 import 'package:myportofolio_mobile/screens/project_list_screen.dart';
 import 'package:myportofolio_mobile/services/auth_state.dart';
@@ -29,10 +29,10 @@ class MyHomePage extends StatelessWidget {
       requiresLogin: true,
     ),
     ItemHomepage(
-      'Tambah Pengalaman',
+      'Pengalaman',
       Icons.work,
       Colors.purple.shade700,
-      page: const ExperienceFormPage(),
+      page: const ExperienceListScreen(),
     ),
     ItemHomepage('Logout', Icons.logout, Colors.red.shade700, action: _logout),
   ];
@@ -89,7 +89,7 @@ class MyHomePage extends StatelessWidget {
               crossAxisSpacing: 10,
               mainAxisSpacing: 10,
               // 2 kolom: 4 kartu tersusun 2x2 dan label panjang seperti
-              // "Tambah Pengalaman" tetap muat di layar sempit (320-360).
+              // "Tambah Proyek" tetap muat di layar sempit (320-360).
               crossAxisCount: 2,
               childAspectRatio: 1.2,
               shrinkWrap: true,

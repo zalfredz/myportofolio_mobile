@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:myportofolio_mobile/main.dart';
 import 'package:myportofolio_mobile/screens/experience_form.dart';
+import 'package:myportofolio_mobile/screens/experience_list_screen.dart';
 
 import 'test_helpers.dart';
 
@@ -22,6 +23,13 @@ Future<void> _pickDay(WidgetTester tester, String label, String day) async {
   await tester.tap(find.text(day).last);
   await tester.tap(find.text('OK'));
   await tester.pumpAndSettle();
+}
+
+/// Kartu Pengalaman membuka daftar, lalu tombol + membuka formulir.
+Future<void> _openFormFromCard(WidgetTester tester) async {
+  await _tapVisible(tester, find.text('Pengalaman'));
+  expect(find.byType(ExperienceListScreen), findsOneWidget);
+  await _tapVisible(tester, find.byTooltip('Tambah Pengalaman'));
 }
 
 Future<void> _openDrawer(WidgetTester tester) async {
@@ -46,18 +54,32 @@ void main() {
   });
 
   group('navigasi ke formulir pengalaman', () {
-    testWidgets('kartu Tambah Pengalaman membuka formulir, Back kembali', (
-      tester,
-    ) async {
+    testWidgets(
+      'kartu Pengalaman -> daftar -> + membuka formulir, Back kembali',
+      (tester) async {
+        await tester.pumpWidget(MyApp(apiClient: fakeApiClient()));
+
+        await _openFormFromCard(tester);
+        expect(find.byType(ExperienceFormPage), findsOneWidget);
+
+        // Tombol Back bawaan perangkat/browser: form -> daftar -> menu.
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        expect(find.byType(ExperienceListScreen), findsOneWidget);
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        expect(find.text(_homeText), findsOneWidget);
+      },
+    );
+
+    testWidgets('drawer Experiences membuka daftar pengalaman', (tester) async {
       await tester.pumpWidget(MyApp(apiClient: fakeApiClient()));
 
-      await _tapVisible(tester, find.text('Tambah Pengalaman'));
-      expect(find.byType(ExperienceFormPage), findsOneWidget);
-
-      // Tombol Back bawaan perangkat/browser.
-      await tester.binding.handlePopRoute();
+      await _openDrawer(tester);
+      await tester.tap(find.text('Experiences'));
       await tester.pumpAndSettle();
-      expect(find.text(_homeText), findsOneWidget);
+      expect(find.byType(ExperienceListScreen), findsOneWidget);
+      expect(find.text('Belum ada pengalaman.'), findsOneWidget);
     });
 
     testWidgets('drawer Add Experience membuka formulir, Home kembali', (
@@ -83,7 +105,7 @@ void main() {
   group('konfirmasi meninggalkan formulir', () {
     Future<void> openFilledForm(WidgetTester tester) async {
       await tester.pumpWidget(MyApp(apiClient: fakeApiClient()));
-      await _tapVisible(tester, find.text('Tambah Pengalaman'));
+      await _openFormFromCard(tester);
       await tester.enterText(_field('Judul Pengalaman'), 'Asisten Dosen');
       await tester.pump();
     }
@@ -106,7 +128,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Buang'));
       await tester.pumpAndSettle();
-      expect(find.text(_homeText), findsOneWidget);
+      expect(find.byType(ExperienceListScreen), findsOneWidget);
     });
 
     testWidgets('Home di drawer dengan isian meminta konfirmasi', (
