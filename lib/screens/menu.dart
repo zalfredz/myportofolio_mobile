@@ -1,8 +1,11 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:myportofolio_mobile/screens/experience_form.dart';
 import 'package:myportofolio_mobile/screens/project_form.dart';
+import 'package:myportofolio_mobile/screens/project_list_screen.dart';
+import 'package:myportofolio_mobile/services/auth_state.dart';
 import 'package:myportofolio_mobile/widgets/left_drawer.dart';
 import 'package:myportofolio_mobile/widgets/project_card.dart';
+import 'package:provider/provider.dart';
 
 class MyHomePage extends StatelessWidget {
   const MyHomePage({super.key});
@@ -12,12 +15,18 @@ class MyHomePage extends StatelessWidget {
   static const String kelas = 'PBP C';
   // Shade 700/800 dipilih agar teks putih di atasnya tetap kontras (WCAG AA).
   static final List<ItemHomepage> items = [
-    ItemHomepage('Lihat Proyek', Icons.folder, Colors.blue.shade700),
+    ItemHomepage(
+      'Lihat Proyek',
+      Icons.folder,
+      Colors.blue.shade700,
+      page: const ProjectListScreen(),
+    ),
     ItemHomepage(
       'Tambah Proyek',
       Icons.add_circle,
       Colors.green.shade800,
       page: const ProjectFormPage(),
+      requiresLogin: true,
     ),
     ItemHomepage(
       'Tambah Pengalaman',
@@ -25,8 +34,18 @@ class MyHomePage extends StatelessWidget {
       Colors.purple.shade700,
       page: const ExperienceFormPage(),
     ),
-    ItemHomepage('Logout', Icons.logout, Colors.red.shade700),
+    ItemHomepage('Logout', Icons.logout, Colors.red.shade700, action: _logout),
   ];
+
+  static Future<void> _logout(BuildContext context) async {
+    final auth = context.read<AuthState>();
+    if (!auth.isLoggedIn) return;
+    final messenger = ScaffoldMessenger.of(context);
+    await auth.logout();
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Berhasil logout.')));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,9 +66,15 @@ class MyHomePage extends StatelessWidget {
           children: [
             const Row(
               children: [
-                Expanded(child: InfoCard(title: 'NPM', content: npm)),
-                Expanded(child: InfoCard(title: 'Name', content: nama)),
-                Expanded(child: InfoCard(title: 'Class', content: kelas)),
+                Expanded(
+                  child: InfoCard(title: 'NPM', content: npm),
+                ),
+                Expanded(
+                  child: InfoCard(title: 'Name', content: nama),
+                ),
+                Expanded(
+                  child: InfoCard(title: 'Class', content: kelas),
+                ),
               ],
             ),
             const SizedBox(height: 32),
@@ -102,7 +127,14 @@ class InfoCard extends StatelessWidget {
 }
 
 class ItemHomepage {
-  const ItemHomepage(this.name, this.icon, this.color, {this.page});
+  const ItemHomepage(
+    this.name,
+    this.icon,
+    this.color, {
+    this.page,
+    this.requiresLogin = false,
+    this.action,
+  });
 
   final String name;
   final IconData icon;
@@ -111,4 +143,10 @@ class ItemHomepage {
   /// Halaman yang dibuka dengan `Navigator.push()` saat kartu ditekan.
   /// `null` berarti kartu hanya menampilkan SnackBar.
   final Widget? page;
+
+  /// Jika `true`, pengguna harus login sebelum [page] dibuka.
+  final bool requiresLogin;
+
+  /// Aksi khusus yang dijalankan setelah SnackBar, misalnya logout.
+  final Future<void> Function(BuildContext context)? action;
 }

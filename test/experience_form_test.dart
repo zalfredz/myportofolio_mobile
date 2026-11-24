@@ -4,6 +4,8 @@ import 'package:material_ui/material_ui.dart';
 import 'package:myportofolio_mobile/main.dart';
 import 'package:myportofolio_mobile/screens/experience_form.dart';
 
+import 'test_helpers.dart';
+
 const _homeText = 'Selamat datang di MyPortfolio Mobile!';
 
 Finder _field(String label) => find.widgetWithText(TextFormField, label);
@@ -47,7 +49,7 @@ void main() {
     testWidgets('kartu Tambah Pengalaman membuka formulir, Back kembali', (
       tester,
     ) async {
-      await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(MyApp(apiClient: fakeApiClient()));
 
       await _tapVisible(tester, find.text('Tambah Pengalaman'));
       expect(find.byType(ExperienceFormPage), findsOneWidget);
@@ -61,7 +63,7 @@ void main() {
     testWidgets('drawer Add Experience membuka formulir, Home kembali', (
       tester,
     ) async {
-      await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(MyApp(apiClient: fakeApiClient()));
 
       await _openDrawer(tester);
       expect(find.text('Home'), findsOneWidget);
@@ -80,7 +82,7 @@ void main() {
 
   group('konfirmasi meninggalkan formulir', () {
     Future<void> openFilledForm(WidgetTester tester) async {
-      await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(MyApp(apiClient: fakeApiClient()));
       await _tapVisible(tester, find.text('Tambah Pengalaman'));
       await tester.enterText(_field('Judul Pengalaman'), 'Asisten Dosen');
       await tester.pump();

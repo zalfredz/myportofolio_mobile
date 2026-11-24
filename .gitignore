@@ -8,3 +8,6 @@ coverage/
 *.iml
 .idea/
 .DS_Store
+
+# Generated json_serializable files
+*.g.dart

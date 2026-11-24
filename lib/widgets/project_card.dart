@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:myportofolio_mobile/screens/menu.dart';
+import 'package:myportofolio_mobile/widgets/auth_guard.dart';
 
 class ItemCard extends StatelessWidget {
   const ItemCard(this.item, {super.key});
@@ -13,7 +14,7 @@ class ItemCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () {
+        onTap: () async {
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
             ..showSnackBar(
@@ -41,13 +42,19 @@ class ItemCard extends StatelessWidget {
               ),
             );
 
-          final page = item.page;
-          if (page != null) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => page),
-            );
+          final action = item.action;
+          if (action != null) {
+            await action(context);
+            return;
           }
+          final page = item.page;
+          if (page == null) return;
+          if (item.requiresLogin && !await ensureLoggedIn(context)) return;
+          if (!context.mounted) return;
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => page),
+          );
         },
         child: Padding(
           padding: const EdgeInsets.all(8),
