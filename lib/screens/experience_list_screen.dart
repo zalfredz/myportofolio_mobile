@@ -3,6 +3,7 @@ import 'package:myportofolio_mobile/models/experience.dart';
 import 'package:myportofolio_mobile/screens/experience_detail_screen.dart';
 import 'package:myportofolio_mobile/screens/experience_form.dart';
 import 'package:myportofolio_mobile/services/api_client.dart';
+import 'package:myportofolio_mobile/widgets/auth_guard.dart';
 import 'package:myportofolio_mobile/widgets/left_drawer.dart';
 import 'package:provider/provider.dart';
 
@@ -36,11 +37,15 @@ class _ExperienceListScreenState extends State<ExperienceListScreen> {
     }
   }
 
-  void _openForm() {
-    Navigator.push(
+  /// Membuka formulir (wajib login) dan menyegarkan daftar setelah tersimpan.
+  Future<void> _openForm() async {
+    if (!await ensureLoggedIn(context)) return;
+    if (!mounted) return;
+    final saved = await Navigator.push<bool>(
       context,
       MaterialPageRoute(builder: (context) => const ExperienceFormPage()),
     );
+    if (saved == true && mounted) await _reload();
   }
 
   /// Membungkus [child] agar tetap bisa di-scroll sehingga pull-to-refresh

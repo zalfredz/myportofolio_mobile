@@ -79,7 +79,11 @@ class LeftDrawer extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.work_outline),
             title: const Text('Add Experience'),
-            onTap: () => _navigate(context, const ExperienceFormPage()),
+            onTap: () => _navigate(
+              context,
+              const ExperienceFormPage(),
+              requiresLogin: true,
+            ),
           ),
           if (isLoggedIn)
             ListTile(

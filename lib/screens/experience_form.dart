@@ -1,6 +1,12 @@
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:myportofolio_mobile/models/experience.dart';
+import 'package:myportofolio_mobile/screens/experience_list_screen.dart';
+import 'package:myportofolio_mobile/services/api_client.dart';
+import 'package:myportofolio_mobile/services/auth_state.dart';
+import 'package:myportofolio_mobile/widgets/auth_guard.dart';
 import 'package:myportofolio_mobile/widgets/left_drawer.dart';
+import 'package:provider/provider.dart';
 
 /// Formulir tambah pengalaman. Field dan aturannya mengikuti model
 /// `Experience` serta `ExperienceForm` di proyek Django myportofolio.
@@ -26,13 +32,15 @@ class _ExperienceFormPageState extends State<ExperienceFormPage> {
   /// Pengalaman yang masih berlangsung tidak punya tanggal selesai,
   /// sama seperti `end_date` kosong (`is_ongoing`) di model Django.
   bool _isOngoing = false;
+  bool _isSubmitting = false;
 
-  // Sama dengan pilihan yang ditampilkan ExperienceForm di Django.
-  static const List<String> _categories = [
-    'Full-Time',
-    'Internship',
-    'Volunteer',
-  ];
+  /// Nilai API -> label. Sama dengan pilihan yang ditampilkan
+  /// ExperienceForm di Django.
+  static const Map<String, String> _categories = {
+    'full-time': 'Full-Time',
+    'internship': 'Internship',
+    'volunteer': 'Volunteer',
+  };
 
   @override
   void dispose() {
@@ -185,8 +193,69 @@ class _ExperienceFormPageState extends State<ExperienceFormPage> {
     );
   }
 
-  void _showSummary() {
-    showDialog(
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  /// Mengirim isian ke `POST /api/v1/experiences/` dengan token login.
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (!await ensureLoggedIn(context)) return;
+    if (!mounted) return;
+
+    final auth = context.read<AuthState>();
+    final api = context.read<ApiClient>();
+    setState(() {
+      _isSubmitting = true;
+    });
+    Experience? created;
+    ApiException? apiError;
+    try {
+      created = await api.createExperience(
+        Experience(
+          title: _title.trim(),
+          description: _description.trim(),
+          category: _category!,
+          thumbnail: _thumbnail.trim(),
+          startDate: _startDate,
+          endDate: _isOngoing ? null : _endDate,
+        ),
+        token: auth.token!,
+      );
+    } on ApiException catch (e) {
+      apiError = e;
+    } catch (_) {
+      if (mounted) _showSnackBar('Tidak dapat terhubung ke server.');
+    } finally {
+      // Hentikan loading sebelum dialog/login tampil.
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
+    if (!mounted) return;
+
+    if (created != null) {
+      await _showSummary(created);
+    } else if (apiError?.statusCode == 401) {
+      // Token sudah tidak berlaku di server: hapus sesi lalu minta login.
+      await auth.logout();
+      if (!mounted) return;
+      _showSnackBar('Sesi berakhir, silakan login kembali.');
+      await ensureLoggedIn(context);
+    } else if (apiError != null) {
+      _showSnackBar(
+        'Gagal menyimpan pengalaman (status ${apiError.statusCode}).',
+      );
+    }
+  }
+
+  /// Ringkasan dari respons server. OK membawa pengguna ke daftar pengalaman.
+  Future<void> _showSummary(Experience saved) async {
+    await showDialog<void>(
       context: context,
       builder: (context) {
         return AlertDialog(
@@ -195,15 +264,16 @@ class _ExperienceFormPageState extends State<ExperienceFormPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Judul: ${_title.trim()}'),
-                Text('Deskripsi: ${_description.trim()}'),
-                Text('Kategori: $_category'),
+                Text('Judul: ${saved.title}'),
+                Text('Deskripsi: ${saved.description}'),
+                Text('Kategori: ${saved.categoryDisplay}'),
                 Text(
-                  'URL Gambar: ${_thumbnail.trim().isEmpty ? '-' : _thumbnail.trim()}',
+                  'URL Gambar: ${saved.thumbnail.isEmpty ? '-' : saved.thumbnail}',
                 ),
-                Text('Tanggal Mulai: ${_formatDate(_startDate!)}'),
+                Text('Tanggal Mulai: ${_formatDate(saved.startDate!)}'),
                 Text(
-                  'Tanggal Selesai: ${_isOngoing ? 'Sekarang' : _formatDate(_endDate!)}',
+                  'Tanggal Selesai: '
+                  '${saved.isOngoing ? 'Sekarang' : _formatDate(saved.endDate!)}',
                 ),
               ],
             ),
@@ -211,15 +281,23 @@ class _ExperienceFormPageState extends State<ExperienceFormPage> {
           actions: [
             TextButton(
               child: const Text('OK'),
-              onPressed: () {
-                Navigator.pop(context);
-                _resetForm();
-              },
+              onPressed: () => Navigator.pop(context),
             ),
           ],
         );
       },
     );
+    if (!mounted) return;
+    _resetForm(); // agar tidak muncul konfirmasi "Buang perubahan?"
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop(true); // daftar yang membuka form akan disegarkan
+    } else {
+      // Form dibuka dari drawer sebagai halaman paling bawah.
+      navigator.pushReplacement(
+        MaterialPageRoute(builder: (context) => const ExperienceListScreen()),
+      );
+    }
   }
 
   @override
@@ -279,11 +357,11 @@ class _ExperienceFormPageState extends State<ExperienceFormPage> {
                     decoration: _decoration('Kategori'),
                     hint: const Text('Pilih kategori'),
                     initialValue: _category,
-                    items: _categories
+                    items: _categories.entries
                         .map(
                           (category) => DropdownMenuItem(
-                            value: category,
-                            child: Text(category),
+                            value: category.key,
+                            child: Text(category.value),
                           ),
                         )
                         .toList(),
@@ -355,15 +433,17 @@ class _ExperienceFormPageState extends State<ExperienceFormPage> {
                           Theme.of(context).colorScheme.primary,
                         ),
                       ),
-                      onPressed: () {
-                        if (_formKey.currentState!.validate()) {
-                          _showSummary();
-                        }
-                      },
-                      child: const Text(
-                        'Simpan',
-                        style: TextStyle(color: Colors.white),
-                      ),
+                      onPressed: _isSubmitting ? null : _submit,
+                      child: _isSubmitting
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text(
+                              'Simpan',
+                              style: TextStyle(color: Colors.white),
+                            ),
                     ),
                   ),
                 ),

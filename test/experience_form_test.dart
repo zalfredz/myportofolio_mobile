@@ -1,9 +1,15 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:myportofolio_mobile/main.dart';
 import 'package:myportofolio_mobile/screens/experience_form.dart';
 import 'package:myportofolio_mobile/screens/experience_list_screen.dart';
+import 'package:myportofolio_mobile/screens/login_screen.dart';
+import 'package:myportofolio_mobile/services/api_client.dart';
+import 'package:myportofolio_mobile/services/auth_state.dart';
+import 'package:provider/provider.dart';
 
 import 'test_helpers.dart';
 
@@ -25,11 +31,47 @@ Future<void> _pickDay(WidgetTester tester, String label, String day) async {
   await tester.pumpAndSettle();
 }
 
-/// Kartu Pengalaman membuka daftar, lalu tombol + membuka formulir.
+/// Mengisi dan mengirim [LoginScreen] (backend tiruan selalu menerima).
+Future<void> _login(WidgetTester tester) async {
+  expect(find.byType(LoginScreen), findsOneWidget);
+  await tester.enterText(_field('Username'), 'owner');
+  await tester.enterText(_field('Password'), 'secret');
+  await _tapVisible(tester, find.widgetWithText(ElevatedButton, 'Login'));
+}
+
+/// Kartu Pengalaman -> daftar -> tombol + -> login -> formulir.
 Future<void> _openFormFromCard(WidgetTester tester) async {
   await _tapVisible(tester, find.text('Pengalaman'));
   expect(find.byType(ExperienceListScreen), findsOneWidget);
   await _tapVisible(tester, find.byTooltip('Tambah Pengalaman'));
+  await _login(tester);
+}
+
+/// Formulir langsung sebagai halaman utama, dengan pengguna sudah login.
+Future<FakeBackend> _pumpForm(WidgetTester tester) async {
+  final backend = FakeBackend();
+  await tester.pumpWidget(
+    MultiProvider(
+      providers: [
+        Provider<ApiClient>.value(value: backend.client),
+        ChangeNotifierProvider(
+          create: (_) => AuthState(backend.client, initialToken: 'test-token'),
+        ),
+      ],
+      child: const MaterialApp(home: ExperienceFormPage()),
+    ),
+  );
+  return backend;
+}
+
+/// Mengisi semua field wajib kecuali tanggal selesai.
+Future<void> _fillRequired(WidgetTester tester) async {
+  await tester.enterText(_field('Judul Pengalaman'), '  Asisten Dosen  ');
+  await tester.enterText(_field('Deskripsi Pengalaman'), 'Mengajar lab');
+  await _tapVisible(tester, find.byType(DropdownButtonFormField<String>));
+  await tester.tap(find.text('Internship').last);
+  await tester.pumpAndSettle();
+  await _pickDay(tester, 'Tanggal Mulai', '10');
 }
 
 Future<void> _openDrawer(WidgetTester tester) async {
@@ -92,6 +134,7 @@ void main() {
       expect(find.text('Add Project'), findsOneWidget);
       await tester.tap(find.text('Add Experience'));
       await tester.pumpAndSettle();
+      await _login(tester);
       expect(find.byType(ExperienceFormPage), findsOneWidget);
 
       await _openDrawer(tester);
@@ -149,11 +192,8 @@ void main() {
   });
 
   group('validasi formulir pengalaman', () {
-    Future<void> pumpForm(WidgetTester tester) =>
-        tester.pumpWidget(const MaterialApp(home: ExperienceFormPage()));
-
     testWidgets('input kosong atau hanya spasi ditolak', (tester) async {
-      await pumpForm(tester);
+      await _pumpForm(tester);
 
       await tester.enterText(_field('Judul Pengalaman'), '   ');
       await _tapVisible(tester, find.text('Simpan'));
@@ -173,7 +213,7 @@ void main() {
     });
 
     testWidgets('URL tanpa http/https ditolak', (tester) async {
-      await pumpForm(tester);
+      await _pumpForm(tester);
 
       await tester.enterText(_field('URL Gambar (opsional)'), 'example.com/a');
       await _tapVisible(tester, find.text('Simpan'));
@@ -184,7 +224,7 @@ void main() {
     testWidgets('tanggal selesai sebelum tanggal mulai ditolak', (
       tester,
     ) async {
-      await pumpForm(tester);
+      await _pumpForm(tester);
 
       await _pickDay(tester, 'Tanggal Selesai', '10');
       await _pickDay(tester, 'Tanggal Mulai', '20');
@@ -196,23 +236,14 @@ void main() {
       );
     });
 
-    /// Mengisi semua field wajib kecuali tanggal selesai.
-    Future<void> fillRequired(WidgetTester tester) async {
-      await tester.enterText(_field('Judul Pengalaman'), '  Asisten Dosen  ');
-      await tester.enterText(_field('Deskripsi Pengalaman'), 'Mengajar lab');
-      await _tapVisible(tester, find.text('Pilih kategori'));
-      await tester.tap(find.text('Internship').last);
-      await tester.pumpAndSettle();
-      await _pickDay(tester, 'Tanggal Mulai', '10');
-    }
-
-    testWidgets('input valid menampilkan ringkasan, OK mengosongkan form', (
+    testWidgets('input valid dikirim ke API, ringkasan, lalu ke daftar', (
       tester,
     ) async {
-      await pumpForm(tester);
+      final backend = await _pumpForm(tester);
       final now = DateTime.now();
+      String two(int n) => n.toString().padLeft(2, '0');
 
-      await fillRequired(tester);
+      await _fillRequired(tester);
       await tester.enterText(
         _field('URL Gambar (opsional)'),
         'https://example.com/a.jpg',
@@ -237,22 +268,30 @@ void main() {
         findsOneWidget,
       );
 
+      final post = backend.requests.lastWhere((r) => r.method == 'POST');
+      expect(post.headers['Authorization'], 'Token test-token');
+      expect(jsonDecode(post.body), {
+        'title': 'Asisten Dosen',
+        'description': 'Mengajar lab',
+        'category': 'internship',
+        'thumbnail': 'https://example.com/a.jpg',
+        'start_date': '${now.year}-${two(now.month)}-10',
+        'end_date': '${now.year}-${two(now.month)}-20',
+      });
+
+      // OK membawa ke daftar yang sudah memuat entri baru.
       await tester.tap(find.text('OK'));
       await tester.pumpAndSettle();
-      expect(find.byType(AlertDialog), findsNothing);
-
-      // Form kembali kosong sehingga Simpan memunculkan error lagi.
-      await _tapVisible(tester, find.text('Simpan'));
-      expect(find.text('Judul pengalaman tidak boleh kosong!'), findsOneWidget);
-      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.byType(ExperienceListScreen), findsOneWidget);
+      expect(find.text('Asisten Dosen'), findsOneWidget);
     });
 
     testWidgets('Masih berlangsung mengosongkan tanggal selesai', (
       tester,
     ) async {
-      await pumpForm(tester);
+      final backend = await _pumpForm(tester);
 
-      await fillRequired(tester);
+      await _fillRequired(tester);
       await _pickDay(tester, 'Tanggal Selesai', '20');
       await _tapVisible(tester, find.text('Masih berlangsung'));
 
@@ -262,14 +301,67 @@ void main() {
 
       await _tapVisible(tester, find.text('Simpan'));
       expect(find.text('Tanggal Selesai: Sekarang'), findsOneWidget);
+      final post = backend.requests.lastWhere((r) => r.method == 'POST');
+      expect((jsonDecode(post.body) as Map)['end_date'], isNull);
+    });
+  });
 
-      // Setelah OK, switch kembali mati.
+  group('pengiriman ke API', () {
+    testWidgets('dari daftar: login, simpan, kembali ke daftar tersegarkan', (
+      tester,
+    ) async {
+      final backend = FakeBackend();
+      await tester.pumpWidget(MyApp(apiClient: backend.client));
+
+      await _openFormFromCard(tester);
+      expect(find.byType(ExperienceFormPage), findsOneWidget);
+      await _fillRequired(tester);
+      await _tapVisible(tester, find.text('Masih berlangsung'));
+      await _tapVisible(tester, find.text('Simpan'));
+      expect(find.text('Pengalaman berhasil disimpan!'), findsOneWidget);
+
       await tester.tap(find.text('OK'));
       await tester.pumpAndSettle();
+      expect(find.byType(ExperienceListScreen), findsOneWidget);
+      expect(find.text('Asisten Dosen'), findsOneWidget);
+      // Back dari daftar kembali ke menu, bukan ke form.
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text(_homeText), findsOneWidget);
+    });
+
+    testWidgets('401: sesi dihapus lalu diminta login kembali', (tester) async {
+      final backend = await _pumpForm(tester);
+      backend.createExperienceStatus = 401;
+
+      await _fillRequired(tester);
+      await _tapVisible(tester, find.text('Masih berlangsung'));
+      await _tapVisible(tester, find.text('Simpan'));
+
+      expect(find.byType(LoginScreen), findsOneWidget);
       expect(
-        tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
-        isFalse,
+        find.text('Sesi berakhir, silakan login kembali.'),
+        findsOneWidget,
       );
+      expect(
+        backend.requests.any((r) => r.url.path == '/api/v1/auth/logout/'),
+        isTrue,
+      );
+    });
+
+    testWidgets('error lain ditampilkan lewat SnackBar', (tester) async {
+      final backend = await _pumpForm(tester);
+      backend.createExperienceStatus = 400;
+
+      await _fillRequired(tester);
+      await _tapVisible(tester, find.text('Masih berlangsung'));
+      await _tapVisible(tester, find.text('Simpan'));
+
+      expect(
+        find.text('Gagal menyimpan pengalaman (status 400).'),
+        findsOneWidget,
+      );
+      expect(find.byType(ExperienceFormPage), findsOneWidget);
     });
   });
 }
