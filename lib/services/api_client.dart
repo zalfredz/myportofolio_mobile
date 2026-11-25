@@ -103,6 +103,15 @@ class ApiClient {
     return decoded['token'] as String;
   }
 
+  /// Menghapus pengalaman. Django mengembalikan 204 No Content jika berhasil.
+  Future<void> deleteExperience(String id, {required String token}) async {
+    final response = await _client.delete(
+      _uri('/api/v1/experiences/$id/'),
+      headers: {'Accept': 'application/json', 'Authorization': 'Token $token'},
+    );
+    _ensureSuccess(response);
+  }
+
   Future<void> logout({required String token}) async {
     final response = await _client.post(
       _uri('/api/v1/auth/logout/'),

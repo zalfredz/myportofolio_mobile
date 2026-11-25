@@ -21,6 +21,9 @@ class FakeBackend {
   /// Status untuk POST experience (mis. 401 untuk token kedaluwarsa).
   int createExperienceStatus = 201;
 
+  /// Status untuk DELETE experience (mis. 403 jika bukan pemilik).
+  int deleteExperienceStatus = 204;
+
   static const _categoryLabels = {
     'full-time': 'Full-Time',
     'internship': 'Internship',
@@ -50,6 +53,14 @@ class FakeBackend {
       };
       experiences.add(saved);
       return http.Response(jsonEncode(saved), 201);
+    }
+    final match = RegExp(r'^/api/v1/experiences/([^/]+)/$').firstMatch(path);
+    if (match != null && request.method == 'DELETE') {
+      if (deleteExperienceStatus != 204) {
+        return http.Response('{"detail": "error"}', deleteExperienceStatus);
+      }
+      experiences.removeWhere((e) => e['id'] == match.group(1));
+      return http.Response('', 204);
     }
     return http.Response('[]', 200);
   }

@@ -48,6 +48,23 @@ class _ExperienceListScreenState extends State<ExperienceListScreen> {
     if (saved == true && mounted) await _reload();
   }
 
+  /// Membuka detail; jika pengalaman dihapus di sana, daftar disegarkan.
+  Future<void> _openDetail(Experience experience) async {
+    final deleted = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ExperienceDetailScreen(experience: experience),
+      ),
+    );
+    if (deleted != true || !mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text('"${experience.title}" berhasil dihapus.')),
+      );
+    await _reload();
+  }
+
   /// Membungkus [child] agar tetap bisa di-scroll sehingga pull-to-refresh
   /// berfungsi walaupun isinya tidak memenuhi layar.
   Widget _refreshable(Widget child) {
@@ -138,13 +155,7 @@ class _ExperienceListScreenState extends State<ExperienceListScreen> {
                     ),
                     isThreeLine: true,
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            ExperienceDetailScreen(experience: experience),
-                      ),
-                    ),
+                    onTap: () => _openDetail(experience),
                   ),
                 );
               },
