@@ -118,3 +118,41 @@ Implementasi saya:
 Saran ini tidak saya pakai karena nilai `FormField` tidak pernah diperbarui, sehingga validator selalu menerima `null` dan formulir tidak bisa disimpan meskipun tanggal sudah dipilih. Saya memakai `TextFormField` read-only dengan controller, validator yang membaca tanggal dari state, dan batas `firstDate` agar tanggal selesai tidak bisa dipilih sebelum tanggal mulai.
 
 ---
+
+### Tugas 9
+
+1. `fieldRename: FieldRename.snake` memetakan field Dart (`startDate`) ke kunci DRF (`start_date`) secara otomatis, dan `includeToJson: false` membuat `id`, `category_display`, serta `is_ongoing` tidak ikut dikirim karena nilainya ditentukan server. `Map` mentah tidak memeriksa nama kunci maupun tipe. Contoh bug di model `Experience`: salah ketik `startDate` akan diabaikan DRF dan, karena `start_date` opsional, data tersimpan dengan tanggal kosong tanpa error.
+
+2. `build()` bisa dipanggil berkali-kali (misalnya setelah `setState()`), sehingga `Future` di dalamnya akan mengirim ulang request dan membuat `FutureBuilder` kembali loading. Di `initState()`, request hanya dikirim sekali, dan pengambilan ulang dilakukan lewat `_reload()`. `ApiException` membawa status kode, sedangkan `null` tidak bisa membedakan daftar kosong dengan request gagal. Dengan exception, `FutureBuilder` dapat menampilkan error dan tombol Retry, dan formulir bisa menangani 401 (login ulang) berbeda dari 400 atau 403 (SnackBar).
+
+3. `SessionAuthentication` memakai cookie sesi yang dikirim otomatis oleh browser, sehingga request yang mengubah data butuh token CSRF. `TokenAuthentication` mengirim kunci secara eksplisit di header `Authorization: Token <key>` tanpa cookie, sehingga cocok untuk aplikasi mobile. Session tetap diaktifkan karena halaman web Django dan Browsable API masih memakai login berbasis sesi. `TokenAuthentication` diletakkan pertama agar request tanpa token yang valid mendapat 401, bukan 403.
+
+4. Job `build` (very_good_workflows) menjalankan `flutter pub get`, `build_runner`, `dart format --set-exit-if-changed`, `flutter analyze`, tes dengan coverage, dan pengecekan `min_coverage`. Job `build_apk` berjalan setelah `build` berhasil, lalu membangun `flutter build apk --release` dan mengunggahnya sebagai artefak `app-release-apk`. Berkas `*.g.dart` di-ignore karena selalu bisa dihasilkan ulang dari kelas model, sehingga tidak perlu di-commit dan tidak tertinggal dari modelnya. CI membuatnya sendiri melalui langkah `setup` sebelum analisis dan build.
+
+### AI Disclosure
+Saya juga menggunakan bantuan AI (model KIMI) untuk memahami dan melihat contoh implementasi code yang ingin saya kerjakan. Penggunaan AI tersebut berfungsi sebagai alat bantu dalam proses pemahaman cara implementasinya, sementara penyesuaian code, integrasi dengan bagian website lainnya saya kerjakan dan sesuaikan sendiri.
+
+bisa di cek melalui link berikut: https://www.kimi.ai/share/1a21b2bc-c4a2-8e7d-8000-0000751ade34
+
+### Implementasi SARAN KIMI (AI):
+
+`Alur Submit dan Status Loading`
+Saran solusi dari AI:
+Kirim data di dalam `try`, tampilkan dialog sukses di dalam `try`, lalu matikan loading di `finally` dan cek `mounted` setelah setiap `await`.
+
+Implementasi saya:
+Saya tetap mengecek `mounted` setelah setiap `await`, tetapi hasil request saya simpan ke variabel terlebih dahulu dan loading dimatikan sebelum dialog tampil. Pada saran AI, `finally` baru berjalan setelah dialog ditutup sehingga spinner tetap berputar di belakang dialog.
+
+`Penanganan Error`
+Saran solusi dari AI:
+Tangkap semua error dengan satu `catch` dan tampilkan pesannya lewat SnackBar.
+
+Implementasi saya:
+Saya membedakan `ApiException` berdasarkan status kode. Status 401 menghapus sesi dan membuka layar login, status lain ditampilkan sebagai SnackBar berisi status kode, dan gangguan jaringan ditampilkan dengan pesan umum agar isi respons server tidak tampil mentah.
+
+`Kembali dan Menyegarkan Daftar`
+Saran solusi dari AI:
+`await Navigator.push<bool>()` dari layar daftar, lalu form memanggil `pop(true)` agar daftar dimuat ulang. Label dropdown dipetakan ke nilai API melalui `Map`.
+
+Implementasi saya:
+Saya memakai pola yang sama, ditambah pengecekan `canPop()`: jika form dibuka dari drawer sebagai halaman paling bawah, aplikasi membuka daftar dengan `pushReplacement`. Dropdown memakai `Map` dengan nilai API sebagai `value`, tanpa nilai default, sehingga kategori wajib dipilih seperti pada form Django.
